@@ -14,7 +14,7 @@ diag( "Testing SQL::Abstract::More $SQL::Abstract::More::VERSION, "
 use constant N_DBI_MOCK_TESTS =>  2;
 
 
-my $sqla = SQL::Abstract::More->new;
+my $sqla = SQL::Abstract::More->new (quote_char => q{"}, name_sep => q{.} );
 my ($sql, @bind, $join);
 
 
@@ -26,7 +26,7 @@ my ($sql, @bind, $join);
 ($sql, @bind) = $sqla->select('Foo', 'bar', {bar => {'>' => 123}}, ['bar']);
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT bar FROM Foo WHERE bar > ? ORDER BY bar', [123],
+  'SELECT "bar" FROM "Foo" WHERE "bar" > ? ORDER BY "bar"', [123],
   'old API (positional parameters)',
 );
 
@@ -39,7 +39,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT bar FROM Foo WHERE bar > ? ORDER BY bar', [123],
+  'SELECT "bar" FROM "Foo" WHERE "bar" > ? ORDER BY "bar"', [123],
   'new API : named parameters',
 );
 
@@ -52,7 +52,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT bar FROM Foo WHERE bar > ? ORDER BY bar', [123],
+  'SELECT "bar" FROM "Foo" WHERE "bar" > ? ORDER BY "bar"', [123],
   '-from => arrayref (1 table)',
 );
 
@@ -65,7 +65,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT bar FROM Foo, Bar, Buz WHERE bar > ?', [123],
+  'SELECT "bar" FROM "Foo", "Bar", "Buz" WHERE "bar" > ?', [123],
   '-from => arrayref (several tables)',
 );
 
@@ -77,7 +77,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT bar FROM Foo WHERE bar > ?', [123],
+  'SELECT "bar" FROM "Foo" WHERE "bar" > ?', [123],
   '-from => scalarref',
 );
 
@@ -90,7 +90,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT bar FROM Foo AS f WHERE f.bar = ?', [123],
+  'SELECT "bar" FROM Foo AS "f" WHERE "f"."bar" = ?', [123],
   '-from with alias'
 );
 
@@ -103,7 +103,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT DISTINCT foo, bar FROM Foo', [],
+  'SELECT DISTINCT "foo", "bar" FROM "Foo"', [],
 );
 
 # other minus signs
@@ -113,7 +113,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT DISTINCT STRAIGHT_JOIN foo, bar FROM Foo', [],
+  'SELECT DISTINCT STRAIGHT_JOIN "foo", "bar" FROM "Foo"', [],
 );
 
 ($sql, @bind) = $sqla->select(
@@ -122,7 +122,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT SQL_SMALL_RESULT foo, bar FROM Foo', [],
+  'SELECT SQL_SMALL_RESULT "foo", "bar" FROM "Foo"', [],
 );
 
 ($sql, @bind) = $sqla->select(
@@ -131,7 +131,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT /*+ FIRST_ROWS (100) */ foo, bar FROM Foo', [],
+  'SELECT /*+ FIRST_ROWS (100) */ "foo", "bar" FROM "Foo"', [],
 );
 
 
@@ -143,14 +143,14 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT col1, (SELECT max(bar) FROM Bar WHERE bar < ?) AS col2, col3 FROM Foo WHERE foo = ?', [123, 456],
+  'SELECT "col1", (SELECT max(bar) FROM Bar WHERE bar < ?) AS col2, "col3" FROM Foo WHERE foo = ?', [123, 456],
   'subquery in select list',
 );
 
 
 # subquery as column, example from the doc
 my ($subq_sql, @subq_bind) = $sqla->select(
-                              -columns => 'COUNT(*)',
+                              -columns => 'COUNT(*)|count',
                               -from    => 'Foo',
                               -where   => {bar_id => {-ident => 'Bar.bar_id'},
                                            height => {-between => [100, 200]}},
@@ -163,10 +163,10 @@ my $subquery = ["($subq_sql)|col3", @subq_bind];
                       );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT col1, col2,
-         (SELECT COUNT(*) FROM Foo WHERE bar_id=Bar.bar_id and height BETWEEN ? AND ?) AS col3,
-         col4
-    FROM Bar WHERE color = ?', [100, 200, 'green'],
+  'SELECT "col1", "col2",
+         (SELECT COUNT(*) AS "count" FROM "Foo" WHERE bar_id=Bar.bar_id and height BETWEEN ? AND ?) AS "col3",
+         "col4"
+    FROM "Bar" WHERE "color" = ?', [100, 200, 'green'],
   'subquery, example from the doc');
 
 
@@ -185,10 +185,10 @@ $subquery = ["($subq_sql)|subq", @subq_bind];
                       );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT subq.*, count(*) AS nb_a
-   FROM (SELECT a, b, c FROM Foo WHERE foo = ?) AS subq
-   WHERE b = ?
-   GROUP BY a',  [123, 456],
+  'SELECT subq.*, count(*) AS "nb_a"
+   FROM (SELECT "a", "b", "c" FROM "Foo" WHERE "foo" = ?) AS "subq"
+   WHERE "b" = ?
+   GROUP BY "a"',  [123, 456],
    'subquery in -from');
 
 
@@ -211,9 +211,9 @@ is_same_sql_bind(
     );
 is_same_sql_bind(
   $sql, \@bind,
-  ' SELECT x, (SELECT MAX(amount) FROM Expenses WHERE ( date > ? AND exp_id = x)) AS max_amount
-    FROM (SELECT f AS x FROM Foo UNION SELECT b AS x FROM Bar WHERE barbar = ?) AS Foo_union_Bar
-    ORDER BY x', ['01.01.2024', 123],
+  ' SELECT "x", (SELECT MAX(amount) FROM "Expenses" WHERE ( "date" > ? AND "exp_id" = "x")) AS "max_amount"
+    FROM (SELECT f AS "x" FROM "Foo" UNION SELECT b AS "x" FROM "Bar" WHERE "barbar" = ?) AS "Foo_union_Bar"
+    ORDER BY "x"', ['01.01.2024', 123],
   'subqueries in column list and in source');
 
 
@@ -227,7 +227,7 @@ my $subq = [ $sqla->select(-columns => 'x',
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo WHERE (x IN (SELECT x FROM Bar WHERE ( y < ? )))',
+  'SELECT * FROM "Foo" WHERE ("x" IN (SELECT "x" FROM "Bar" WHERE ( "y" < ? )))',
   [100],
   'select -in => subquery',
  );
@@ -239,7 +239,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo INNER JOIN Bar ON Foo.fk=Bar.pk', [],
+  'SELECT * FROM "Foo" INNER JOIN "Bar" ON "Foo"."fk"="Bar"."pk"', [],
   'select from join',
 );
 
@@ -249,7 +249,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo INNER JOIN Bar ON Foo.fk=Bar.pk and Foo.other = ?', ['abc'],
+  'SELECT * FROM "Foo" INNER JOIN "Bar" ON "Foo"."fk"="Bar"."pk" and "Foo"."other" = ?', ['abc'],
   'select from join with bind value',
 );
 
@@ -267,8 +267,8 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT col1, col2 FROM Foo WHERE col1 = ? '
-  .' INTERSECT SELECT col3, col4 FROM Bar WHERE col3 = ?',
+  'SELECT "col1", "col2" FROM "Foo" WHERE "col1" = ? '
+  .' INTERSECT SELECT "col3", "col4" FROM "Bar" WHERE "col3" = ?',
   [123, 456],
   'from q1 intersect q2',
 );
@@ -285,10 +285,10 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT col1, col2 FROM Foo WHERE col1 = ? '
-  .' UNION ALL SELECT col1, col2 FROM Foo WHERE col2 = ?'
-  .' UNION ALL SELECT col1, col3 FROM Foo WHERE col3 = ?'
-  .' ORDER BY col1, col2',
+  'SELECT "col1", "col2" FROM "Foo" WHERE "col1" = ? '
+  .' UNION ALL SELECT "col1", "col2" FROM "Foo" WHERE "col2" = ?'
+  .' UNION ALL SELECT "col1", "col3" FROM "Foo" WHERE "col3" = ?'
+  .' ORDER BY "col1", "col2"',
   [123, 456, 789],
   'from q1 union_all q2',
 );
@@ -300,7 +300,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo ORDER BY foo DESC, bar ASC, buz', [],
+  'SELECT * FROM "Foo" ORDER BY "foo" DESC, "bar" ASC, "buz"', [],
 );
 
 #-group_by / -having
@@ -312,7 +312,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT foo, SUM(bar) AS sum_bar FROM Foo GROUP BY foo HAVING sum_bar > ?', [10],
+  'SELECT "foo", SUM(bar) AS "sum_bar" FROM "Foo" GROUP BY "foo" HAVING "sum_bar" > ?', [10],
   'group by / having',
 );
 
@@ -325,7 +325,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT SUM(bar) AS sum_bar FROM Foo WHERE ( foo = ? ) HAVING ( sum_bar > ? )', [1,10],
+  'SELECT SUM(bar) AS "sum_bar" FROM "Foo" WHERE ( "foo" = ? ) HAVING ( "sum_bar" > ? )', [1,10],
   'group by / having (2)',
 );
 
@@ -336,7 +336,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo LIMIT ? OFFSET ?', [100, 0],
+  'SELECT * FROM "Foo" LIMIT ? OFFSET ?', [100, 0],
 );
 
 ($sql, @bind) = $sqla->select(
@@ -345,7 +345,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo LIMIT ? OFFSET ?', [0, 0],
+  'SELECT * FROM "Foo" LIMIT ? OFFSET ?', [0, 0],
   'limit 0',
 );
 
@@ -359,7 +359,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo LIMIT ? OFFSET ?', [100, 300],
+  'SELECT * FROM "Foo" LIMIT ? OFFSET ?', [100, 300],
 );
 
 
@@ -371,7 +371,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo LIMIT ? OFFSET ?', [50, 50],
+  'SELECT * FROM "Foo" LIMIT ? OFFSET ?', [50, 50],
 );
 
 
@@ -382,7 +382,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo FOR UPDATE', [],
+  'SELECT * FROM "Foo" FOR UPDATE', [],
 );
 
 # -want_details
@@ -393,7 +393,7 @@ my $details = $sqla->select(
 );
 is_same_sql_bind(
   $details->{sql}, $details->{bind},
-  'SELECT f.col1 AS c1, b.col2 AS c2 FROM Foo AS f INNER JOIN Bar AS b ON f.fk=b.pk', [],
+  'SELECT f.col1 AS "c1", b.col2 AS "c2" FROM Foo AS "f" INNER JOIN Bar AS "b" ON "f"."fk"="b"."pk"', [],
 );
 is_deeply($details->{aliased_tables}, {f => 'Foo', b => 'Bar'}, 
           'aliased tables');
@@ -408,7 +408,7 @@ is_deeply($details->{aliased_columns}, {c1 => 'f.col1', c2 => 'b.col2'},
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT A||B, C||D AS cd, (E||F||G) AS efg, true|false AS bool FROM Foo', [],
+  'SELECT A||B, C||D AS "cd", (E||F||G) AS "efg", true|false AS "bool" FROM "Foo"', [],
   'aliased cols with '|''
 );
 
@@ -418,7 +418,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT NULL AS a1, 2 AS a2, x AS a3 FROM Foo', [],
+  'SELECT NULL AS "a1", 2 AS "a2", x AS "a3" FROM "Foo"', [],
   'aliased cols with '|', single char on left-hand side'
 );
 
@@ -431,7 +431,7 @@ is_same_sql_bind(
  );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo WHERE foo = ?',
+  'SELECT * FROM "Foo" WHERE "foo" = ?',
   [ [{dbd_attrs => {ora_type => 'TEST'}}, 123] ],
   'SQL type with implicit = operator',
 );
@@ -442,7 +442,7 @@ is_same_sql_bind(
  );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo WHERE bar < ?',
+  'SELECT * FROM "Foo" WHERE "bar" < ?',
   [ [{dbd_attrs => {pg_type  => 999}}, 456] ],
   'SQL type with explicit operator',
 );
@@ -454,7 +454,7 @@ is_same_sql_bind(
  );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(x) VALUES(?)',
+  'INSERT INTO "Foo"("x") VALUES(?)',
   [ [{dbd_attrs => {pg_type  => 999}}, 456] ],
   'INSERT with SQL type',
 );
@@ -466,7 +466,7 @@ is_same_sql_bind(
  );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET x = ? WHERE bar = ?',
+  'UPDATE "Foo" SET "x" = ? WHERE "bar" = ?',
   [ [{dbd_attrs => {pg_type  => 999}}, 456], 'buz' ],
   'UPDATE with SQL type',
 );
@@ -480,7 +480,7 @@ is_same_sql_bind(
  );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM Foo WHERE bar IS NULL OR bar < ?',
+  'SELECT * FROM "Foo" WHERE "bar" IS NULL OR "bar" < ?',
   [ 'foo' ],
   'OR arrayref pair which is not a value/type pair',
 );
@@ -494,14 +494,14 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->column_alias(qw/Foo f/);
 is_same_sql_bind(
   $$sql, \@bind,
-  'Foo AS f', [],
+  'Foo AS "f"', [],
   'column alias',
 );
 
 ($sql, @bind) = $sqla->column_alias(qw/Foo/);
 is_same_sql_bind(
   $sql, \@bind,
-  'Foo', [],
+  '"Foo"', [],
   'column alias without alias',
 );
 
@@ -509,7 +509,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->table_alias(qw/Foo f/);
 is_same_sql_bind(
   $sql, \@bind,
-  'Foo AS f', [],
+  '"Foo AS "f"', [],
   'table alias',
 );
 
@@ -524,14 +524,14 @@ is_same_sql_bind(
 $join = $sqla->join(qw[Foo|f =>{fk_A=pk_A,fk_B=pk_B} Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo AS f LEFT OUTER JOIN Bar ON f.fk_A = Bar.pk_A AND f.fk_B = Bar.pk_B', [],
+  'Foo AS "f" LEFT OUTER JOIN "Bar" ON "f"."fk_A" = "Bar"."pk_A" AND "f"."fk_B" = "Bar"."pk_B"', [],
   'join syntax',
 );
 
 $join = $sqla->join(qw[Foo <=>[A<B,C<D] Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo INNER JOIN Bar ON Foo.A < Bar.B OR Foo.C < Bar.D', [],
+  '"Foo" INNER JOIN "Bar" ON "Foo"."A" < "Bar"."B" OR "Foo"."C" < "Bar"."D"', [],
   'join syntax with OR',
 );
 
@@ -539,7 +539,7 @@ is_same_sql_bind(
 $join = $sqla->join(qw[Foo == Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo NATURAL JOIN Bar', [],
+  '"Foo" NATURAL JOIN "Bar"', [],
   'natural join',
 );
 
@@ -550,10 +550,10 @@ $join = $sqla->join(qw[Table1|t1       ab=cd         Table2|t2
                                     =>{t1.mn=op}     Table4]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Table1 AS t1 INNER JOIN      Table2 AS t2 ON t1.ab=t2.cd
-                INNER JOIN      Table3       ON t2.ef>Table3.gh 
-                                            AND t2.ij<Table3.kl
-                LEFT OUTER JOIN Table4       ON t1.mn=Table4.op',
+  'Table1 AS "t1" INNER JOIN      Table2 AS "t2" ON "t1"."ab"="t2"."cd"
+                INNER JOIN      "Table3"       ON "t2"."ef">"Table3"."gh" 
+                                            AND "t2"."ij"<"Table3"."kl"
+                LEFT OUTER JOIN Table4       ON "t1"."mn"="Table4"."op"',
   [],
 );
 
@@ -562,7 +562,7 @@ is_same_sql_bind(
 $join = $sqla->join(qw[Foo >=<{a=b} Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo FULL OUTER JOIN Bar ON Foo.a=Bar.b', [],
+  '"Foo" FULL OUTER JOIN "Bar" ON "Foo"."a"="Bar"."b"', [],
   'full outer join',
 );
 
@@ -572,7 +572,7 @@ is_same_sql_bind(
 $join = $sqla->join(qw[Table1|t1  t1.ab=t2.cd Table2|t2]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Table1 AS t1 INNER JOIN  Table2 AS t2 ON t1.ab=t2.cd',
+  'Table1 AS "t1" INNER JOIN  Table2 AS "t2" ON "t1"."ab"="t2"."cd"',
   [],
   'explicit tables in join condition'
  );
@@ -598,7 +598,7 @@ $sqla = SQL::Abstract::More->new(table_alias  => '%1$s %2$s',
 $join = $sqla->join(qw[Foo|f  =>{fk_A=pk_A,fk_B=pk_B} Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo f LEFT OUTER JOIN (Bar) ON f.fk_A = Bar.pk_A AND f.fk_B = Bar.pk_B', [],
+  'Foo "f" LEFT OUTER JOIN ("Bar") ON "f"."fk_A" = "Bar"."pk_A" AND "f"."fk_B" = "Bar"."pk_B"', [],
 );
 
 
@@ -620,7 +620,7 @@ $sqla = SQL::Abstract::More->new(sql_dialect => 'Oracle');
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT col1 c1, col2 c2 FROM Foo f INNER JOIN Bar b ON f.fk=b.pk',
+  'SELECT col1 "c1", col2 "c2" FROM Foo "f" INNER JOIN Bar "b" ON "f"."fk"="b"."pk"',
   []
 );
 
@@ -683,10 +683,10 @@ my @vals = (1 .. 35);
 
 is_same_sql_bind(
   $sql, \@bind,
-  ' WHERE ( ( foo IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
-       . ' OR foo IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
-       . ' OR foo IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
-       . ' OR foo IN ( ?, ?, ?, ?, ?) ) )',
+  ' WHERE ( ( "foo" IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
+       . ' OR "foo" IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
+       . ' OR "foo" IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
+       . ' OR "foo" IN ( ?, ?, ?, ?, ?) ) )',
   [1 .. 35]
 );
 
@@ -694,10 +694,10 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->where({foo => {-not_in => \@vals}});
 is_same_sql_bind(
   $sql, \@bind,
-  ' WHERE ( ( foo NOT IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
-      . ' AND foo NOT IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
-      . ' AND foo NOT IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
-      . ' AND foo NOT IN ( ?, ?, ?, ?, ?) ) )',
+  ' WHERE ( ( "foo" NOT IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
+      . ' AND "foo" NOT IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
+      . ' AND "foo" NOT IN ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) '
+      . ' AND "foo" NOT IN ( ?, ?, ?, ?, ?) ) )',
   [1 .. 35]
 );
 
@@ -709,8 +709,8 @@ $sqla = SQL::Abstract::More->new(
                               bar => {-not_in => [6 .. 10]}});
 is_same_sql_bind(
   $sql, \@bind,
-  ' WHERE (     ( bar NOT IN ( ?, ?, ? ) AND bar NOT IN ( ?, ? ) )'
-        . ' AND ( foo IN ( ?, ?, ? ) OR foo IN ( ?, ? ) )  )',
+  ' WHERE (     ( "bar" NOT IN ( ?, ?, ? ) AND "bar" NOT IN ( ?, ? ) )'
+        . ' AND ( "foo" IN ( ?, ?, ? ) OR "foo" IN ( ?, ? ) )  )',
   [6 .. 10, 1 .. 5]
 );
 
@@ -718,7 +718,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->where({foo => {-in => 123}});
 is_same_sql_bind(
   $sql, \@bind,
-  ' WHERE ( foo IN (?) )',
+  ' WHERE ( "foo" IN (?) )',
   [123],
 );
 
@@ -734,7 +734,7 @@ my $vals = bless [1, 2], 'Array::PseudoScalar'; # doesn't matter if not loaded
 
 is_same_sql_bind(
   $sql, \@bind,
-  ' WHERE ( bar NOT IN ( ?, ? ) AND foo IN ( ?, ? ) )',
+  ' WHERE ( "bar" NOT IN ( ?, ? ) AND "foo" IN ( ?, ? ) )',
   [1, 2, 1, 2],
 );
 
@@ -750,21 +750,21 @@ my $sqla_RO = SQL::Abstract::More->new(
 ($sql, @bind) = $sqla_RO->select(-from => 'Foo');
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM FOO FOR READ ONLY',  [],
+  'SELECT * FROM "FOO" FOR READ ONLY',  [],
   'select_implicitly_for - basic',
 );
 
 ($sql, @bind) = $sqla_RO->select(-from => 'Foo', -for => 'UPDATE');
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM FOO FOR UPDATE',  [],
+  'SELECT * FROM "FOO" FOR UPDATE',  [],
   'select_implicitly_for - override',
 );
 
 ($sql, @bind) = $sqla_RO->select(-from => 'Foo', -for => undef);
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM FOO',  [],
+  'SELECT * FROM "FOO"',  [],
   'select_implicitly_for - disable',
 );
 
@@ -781,7 +781,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(bar, foo) VALUES (?, ?)',
+  'INSERT INTO "Foo"("bar", "foo") VALUES (?, ?)',
   [2, 1],
   'insert - hashref',
 );
@@ -793,7 +793,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo VALUES (?, ?)',
+  'INSERT INTO "Foo" VALUES (?, ?)',
   [1, 2],
   'insert - arrayref',
 );
@@ -807,7 +807,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(a, b) SELECT x, y FROM Bar',
+  'INSERT INTO "Foo"("a", "b") SELECT "x", "y" FROM "Bar"',
   [],
   'insert .. select',
 );
@@ -819,7 +819,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->insert('Foo', {foo => 1, bar => 2}); 
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(bar, foo) VALUES (?, ?)',
+  'INSERT INTO "Foo"("bar", "foo") VALUES (?, ?)',
   [2, 1],
 );
 
@@ -834,7 +834,7 @@ ok($@, 'unknown arg to insert()');
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT IGNORE INTO Foo(bar, foo) VALUES (?, ?)',
+  'INSERT IGNORE INTO "Foo"("bar", "foo") VALUES (?, ?)',
   [2, 1],
 );
 ($sql, @bind) = $sqla->insert(
@@ -844,7 +844,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT OR IGNORE INTO Foo(bar, foo) VALUES (?, ?)',
+  'INSERT OR IGNORE INTO "Foo"("bar", "foo") VALUES (?, ?)',
   [2, 1],
 );
 
@@ -858,7 +858,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(bar, foo) VALUES (?, ?) RETURNING key',
+  'INSERT INTO "Foo"("bar", "foo") VALUES (?, ?) RETURNING key',
   [2, 1],
 );
 
@@ -869,7 +869,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(bar, foo) VALUES (?, ?) RETURNING k1, k2',
+  'INSERT INTO "Foo"("bar", "foo") VALUES (?, ?) RETURNING k1, k2',
   [2, 1],
 );
 
@@ -880,7 +880,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO Foo(bar, foo) VALUES (?, ?) RETURNING k1, k2 INTO ?, ?',
+  'INSERT INTO "Foo"("bar", "foo") VALUES (?, ?) RETURNING "k1", "k2" INTO ?, ?',
   [2, 1, \$k2, \$k1],
 );
 
@@ -925,7 +925,7 @@ SKIP: {
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET bar = ?, foo = ? WHERE buz = ?',
+  'UPDATE Foo  "bar" = ?, "foo" = ? WHERE "buz" = ?',
   [2, 1, 3],
 );
 
@@ -936,7 +936,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET bar = ?, foo = ?',
+  'UPDATE "Foo" SET "bar" = ?, "foo" = ?',
   [2, 1],
 );
 
@@ -944,7 +944,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->update('Foo', {foo => 1, bar => 2}, {buz => 3});
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET bar = ?, foo = ? WHERE buz = ?',
+  'UPDATE "Foo" SET "bar" = ?, "foo" = ? WHERE "buz" = ?',
   [2, 1, 3],
 );
 
@@ -956,7 +956,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo AS a SET a.bar = ?, a.foo = ? WHERE a.buz = ?',
+  'UPDATE Foo AS "a" SET "a"."bar" = ?, "a"."foo" = ? WHERE "a"."buz" = ?',
   [2, 1, 3],
 );
 
@@ -971,7 +971,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET bar = ?, foo = ? WHERE buz = ? ORDER BY baz LIMIT ?',
+  'UPDATE "Foo" SET "bar" = ?, "foo" = ? WHERE "buz" = ? ORDER BY "baz" LIMIT ?',
   [2, 1, 3, 10],
   'update with -order_by/-limit',
 );
@@ -982,7 +982,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo INNER JOIN Bar ON Foo.fk=Bar.pk SET bar = ?, foo = ?',
+  'UPDATE "Foo" INNER JOIN "Bar" ON "Foo"."fk"="Bar"."pk" SET "bar" = ?, "foo" = ?',
   [2, 1],
 );
 
@@ -997,7 +997,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET foo = ? RETURNING key',
+  'UPDATE "Foo" SET "foo" = ? RETURNING "key"',
   [1],
   'update returning (scalar)',
 );
@@ -1009,7 +1009,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET foo = ? RETURNING k1, k2',
+  'UPDATE "Foo" SET "foo" = ? RETURNING "k1", "k2"',
   [1],
   'update returning (arrayref)',
 );
@@ -1021,7 +1021,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo SET foo = ? RETURNING k1, k2 INTO ?, ?',
+  'UPDATE "Foo" SET "foo" = ? RETURNING "k1", "k2" INTO ?, ?',
   [1, \$kupd1, \$kupd2],
   'update returning (hashref)',
 );
@@ -1037,7 +1037,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE IGNORE Foo SET foo = ?',
+  'UPDATE IGNORE "Foo" SET "foo" = ?',
   [1],
   'update IGNORE',
 );
@@ -1056,7 +1056,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'DELETE FROM Foo WHERE buz = ?',
+  'DELETE FROM "Foo" WHERE "buz" = ?',
   [3],
   'delete',
 );
@@ -1065,7 +1065,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->delete('Foo', {buz => 3});
 is_same_sql_bind(
   $sql, \@bind,
-  'DELETE FROM Foo WHERE buz = ?',
+  'DELETE FROM "Foo" WHERE "buz" = ?',
   [3],
   'delete, old API',
 );
@@ -1077,7 +1077,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'DELETE FROM Foo AS a WHERE buz = ?',
+  'DELETE FROM Foo AS "a" WHERE "buz" = ?',
   [3],
   'delete with table alias',
 );
@@ -1092,7 +1092,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'DELETE FROM Foo WHERE buz = ? ORDER BY baz LIMIT ?',
+  'DELETE FROM "Foo" WHERE "buz" = ? ORDER BY "baz" LIMIT ?',
   [3, 10],
   'delete with -order_by/-limit',
 );
@@ -1107,7 +1107,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'DELETE IGNORE FROM Foo WHERE buz = ?',
+  'DELETE IGNORE FROM "Foo" WHERE "buz" = ?',
   [3],
   'delete with -add_sql',
 );
@@ -1118,8 +1118,6 @@ is_same_sql_bind(
 #----------------------------------------------------------------------
 # quote
 #----------------------------------------------------------------------
-
-$sqla = SQL::Abstract::More->new({ quote_char => q{"}, name_sep => q{.} });
 
 ($sql, @bind) = $sqla->select(
     -from => [
@@ -1147,6 +1145,43 @@ is_same_sql_bind(
   [],
 );
 
+#----------------------------------------------------------------------
+# quote table name
+#----------------------------------------------------------------------
+
+($sql, @bind) = $sqla->select(
+        -from    => 'Foo|Bar',
+        -columns => 'a|b'
+);
+
+is_same_sql_bind(
+  $sql, \@bind,
+      'SELECT "a" AS "b" FROM Foo AS "Bar"',
+  [],
+);
+
+($sql, @bind) = $sqla->delete(
+        -from    => 'Foo|Bar',
+        -where => { a => 3 },
+);
+
+is_same_sql_bind(
+  $sql, \@bind,
+        'DELETE FROM Foo AS "Bar" WHERE ( "a" = ? )',
+  [3],
+);
+
+($sql, @bind) = $sqla->update(
+        -table    => 'Foo|Bar',
+        -set => { b => 2 },
+        -where => { a => 3 },
+);
+
+is_same_sql_bind(
+  $sql, \@bind,
+  'UPDATE Foo AS "Bar" SET "b" = ? WHERE ( "a" = ? )',
+  [2, 3],
+);
 
 #----------------------------------------------------------------------
 # THE END
