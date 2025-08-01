@@ -93,7 +93,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT "bar" FROM Foo AS "f" WHERE ( "f"."bar" = ? )', [123],
+  'SELECT "bar" FROM "Foo" AS "f" WHERE ( "f"."bar" = ? )', [123],
   '-from with alias'
 );
 
@@ -512,7 +512,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->table_alias(qw/Foo f/);
 is_same_sql_bind(
   $sql, \@bind,
-  'Foo AS "f"', [],
+  '"Foo" AS "f"', [],
   'table alias',
 );
 
@@ -527,7 +527,7 @@ is_same_sql_bind(
 $join = $sqla->join(qw[Foo|f =>{fk_A=pk_A,fk_B=pk_B} Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo AS "f" LEFT OUTER JOIN "Bar" ON ( ( "f"."fk_A" = "Bar"."pk_A" AND "f"."fk_B" = "Bar"."pk_B" ) )', [],
+  '"Foo" AS "f" LEFT OUTER JOIN "Bar" ON ( ( "f"."fk_A" = "Bar"."pk_A" AND "f"."fk_B" = "Bar"."pk_B" ) )', [],
   'join syntax',
 );
 
@@ -553,7 +553,7 @@ $join = $sqla->join(qw[Table1|t1       ab=cd         Table2|t2
                                     =>{t1.mn=op}     Table4]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Table1 AS "t1" INNER JOIN      Table2 AS "t2" ON ( "t1"."ab" = "t2"."cd" )
+  '"Table1" AS "t1" INNER JOIN      "Table2" AS "t2" ON ( "t1"."ab" = "t2"."cd" )
                   INNER JOIN      "Table3"       ( ( ON "t2"."ef" > "Table3"."gh" 
                                             AND "t2"."ij" < "Table3"."kl" ) )
                 LEFT OUTER JOIN "Table4"       ON ( "t1"."mn" = "Table4"."op" )',
@@ -575,7 +575,7 @@ is_same_sql_bind(
 $join = $sqla->join(qw[Table1|t1  t1.ab=t2.cd Table2|t2]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Table1 AS "t1" INNER JOIN  Table2 AS "t2" ON ( "t1"."ab"="t2"."cd" )',
+  '"Table1" AS "t1" INNER JOIN  "Table2" AS "t2" ON ( "t1"."ab"="t2"."cd" )',
   [],
   'explicit tables in join condition'
  );
@@ -961,7 +961,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo AS "a" SET "a"."bar" = ?, "a"."foo" = ? WHERE ( "a"."buz" = ? )',
+  'UPDATE "Foo" AS "a" SET "a"."bar" = ?, "a"."foo" = ? WHERE ( "a"."buz" = ? )',
   [2, 1, 3],
 );
 
@@ -1082,7 +1082,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'DELETE FROM Foo AS "a" WHERE "buz" = ?',
+  'DELETE FROM "Foo" AS "a" WHERE "buz" = ?',
   [3],
   'delete with table alias',
 );
@@ -1172,7 +1172,7 @@ is_same_sql_bind(
 
 is_same_sql_bind(
   $sql, \@bind,
-        'DELETE FROM Foo AS "Bar" WHERE ( "a" = ? )',
+        'DELETE FROM "Foo" AS "Bar" WHERE ( "a" = ? )',
   [3],
 );
 
@@ -1184,7 +1184,7 @@ is_same_sql_bind(
 
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo AS "Bar" SET "b" = ? WHERE ( "a" = ? )',
+  'UPDATE "Foo" AS "Bar" SET "b" = ? WHERE ( "a" = ? )',
   [2, 3],
 );
 
