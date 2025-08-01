@@ -14,7 +14,10 @@ diag( "Testing SQL::Abstract::More $SQL::Abstract::More::VERSION, "
 use constant N_DBI_MOCK_TESTS =>  2;
 
 
-my $sqla = SQL::Abstract::More->new (quote_char => q{"}, name_sep => q{.} );
+sub sqla { SQL::Abstract::More->new (
+    quote_char => q{"}, name_sep => q{.}, @_)
+}
+my $sqla = sqla();
 my ($sql, @bind, $join);
 
 
@@ -591,9 +594,10 @@ is_deeply($merged,
 # test a customized instance
 #----------------------------------------------------------------------
 
-$sqla = SQL::Abstract::More->new(table_alias  => '%1$s %2$s',
-                                 limit_offset => 'LimitXY',
-                                 sql_dialect  => 'MsAccess');
+$sqla = sqla(table_alias  => '%1$s %2$s',
+             limit_offset => 'LimitXY',
+             sql_dialect  => 'MsAccess',
+         );
 
 $join = $sqla->join(qw[Foo|f  =>{fk_A=pk_A,fk_B=pk_B} Bar]);
 is_same_sql_bind(
@@ -613,7 +617,7 @@ ok($sqla->join_assoc_right,
    'join_assoc_right is true');
 
 
-$sqla = SQL::Abstract::More->new(sql_dialect => 'Oracle');
+$sqla = sqla(sql_dialect => 'Oracle');
 ($sql, @bind) = $sqla->select(
   -columns => [qw/col1|c1 col2|c2/],
   -from    => [-join => qw/Foo|f fk=pk Bar|b/],
@@ -639,7 +643,7 @@ is_same_sql_bind(
 
 
 # Oracle12c version of limit/offset
-$sqla = SQL::Abstract::More->new(sql_dialect => 'Oracle12c');
+$sqla = sqla( sql_dialect => 'Oracle12c' );
 ($sql, @bind) = $sqla->limit_offset(123, 456);
 is_same_sql_bind(
   $sql, \@bind,
@@ -653,7 +657,7 @@ is_same_sql_bind(
 # method redefinition
 #----------------------------------------------------------------------
 
-$sqla = SQL::Abstract::More->new(
+$sqla = sqla(
     limit_offset => sub {
       my ($self, $limit, $offset) = @_;
       defined $limit or die 'NO LIMIT!';
@@ -674,7 +678,7 @@ is_same_sql_bind(
 # max_members_IN
 #----------------------------------------------------------------------
 
-$sqla = SQL::Abstract::More->new(
+$sqla = sqla(
   max_members_IN => 10
  );
 
@@ -701,7 +705,7 @@ is_same_sql_bind(
   [1 .. 35]
 );
 
-$sqla = SQL::Abstract::More->new(
+$sqla = sqla(
   max_members_IN => 3
  );
 
@@ -727,6 +731,7 @@ is_same_sql_bind(
 # -in with objects
 #----------------------------------------------------------------------
 
+$sqla = sqla ();
 my $vals = bless [1, 2], 'Array::PseudoScalar'; # doesn't matter if not loaded
 
 ($sql, @bind) = $sqla->where({foo => {-in     => $vals},
@@ -743,7 +748,7 @@ is_same_sql_bind(
 # select_implicitly_for
 #----------------------------------------------------------------------
 
-my $sqla_RO = SQL::Abstract::More->new(
+my $sqla_RO = sqla(
   select_implicitly_for => 'READ ONLY',
  );
 
