@@ -925,7 +925,7 @@ SKIP: {
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE Foo  "bar" = ?, "foo" = ? WHERE ( "buz" = ? )',
+  'UPDATE "Foo"  "bar" = ?, "foo" = ? WHERE ( "buz" = ? )',
   [2, 1, 3],
 );
 
