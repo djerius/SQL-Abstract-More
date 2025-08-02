@@ -146,7 +146,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT "col1", (SELECT max(bar) FROM Bar WHERE bar < ?) AS "col2", "col3" FROM Foo WHERE ( "foo" = ? )', [123, 456],
+  'SELECT "col1", (SELECT max(bar) FROM Bar WHERE bar < ?) AS "col2", "col3" FROM "Foo" WHERE ( "foo" = ? )', [123, 456],
   'subquery in select list',
 );
 
@@ -188,9 +188,9 @@ $subquery = ["($subq_sql)|subq", @subq_bind];
                       );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT subq.*, count(*) AS "nb_a"
+  'SELECT "subq".*, count(*) AS "nb_a"
    FROM (SELECT "a", "b", "c" FROM "Foo" WHERE ( "foo" = ? )) AS "subq"
-   WHERE "b" = ?
+   WHERE ( "b" = ? )
    GROUP BY "a"',  [123, 456],
    'subquery in -from');
 
@@ -215,7 +215,7 @@ is_same_sql_bind(
 is_same_sql_bind(
   $sql, \@bind,
   'SELECT "x", (SELECT MAX(amount) FROM "Expenses" WHERE ( ( "date" > ? AND "exp_id" = "x" ) )) AS "max_amount"
-    FROM (SELECT f AS "x" FROM "Foo" UNION SELECT b AS "x" FROM "Bar" WHERE ( "barbar" = ? )) AS "Foo_union_Bar"
+    FROM (SELECT "f" AS "x" FROM "Foo" UNION SELECT "b" AS "x" FROM "Bar" WHERE ( "barbar" = ? )) AS "Foo_union_Bar"
     ORDER BY "x"', ['01.01.2024', 123],
   'subqueries in column list and in source');
 
@@ -396,7 +396,7 @@ my $details = $sqla->select(
 );
 is_same_sql_bind(
   $details->{sql}, $details->{bind},
-  'SELECT f.col1 AS "c1", b.col2 AS "c2" FROM Foo AS "f" INNER JOIN Bar AS "b" ON ( "f"."fk" = "b"."pk" )', [],
+  'SELECT "f"."col1" AS "c1", "b"."col2" AS "c2" FROM "Foo" AS "f" INNER JOIN "Bar" AS "b" ON ( "f"."fk" = "b"."pk" )', [],
 );
 is_deeply($details->{aliased_tables}, {f => 'Foo', b => 'Bar'}, 
           'aliased tables');
@@ -411,17 +411,17 @@ is_deeply($details->{aliased_columns}, {c1 => 'f.col1', c2 => 'b.col2'},
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT "A||B", C||D AS "cd", (E||F||G) AS "efg", true|false AS "bool" FROM "Foo"', [],
+  'SELECT "A||B", "C||D" AS "cd", (E||F||G) AS "efg", "true|false" AS "bool" FROM "Foo"', [],
   'aliased cols with '|''
 );
 
 ($sql, @bind) = $sqla->select(
-  -columns  => [qw/NULL|a1 2|a2 x|a3/],
+  -columns  => [qw/(NULL)|a1 (2)|a2 x|a3/],
   -from     => 'Foo',
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT NULL AS "a1", 2 AS "a2", x AS "a3" FROM "Foo"', [],
+  'SELECT (NULL) AS "a1", (2) AS "a2", "x" AS "a3" FROM "Foo"', [],
   'aliased cols with '|', single char on left-hand side'
 );
 
@@ -497,7 +497,7 @@ is_same_sql_bind(
 ($sql, @bind) = $sqla->column_alias(qw/Foo f/);
 is_same_sql_bind(
   $$sql, \@bind,
-  'Foo AS "f"', [],
+  '"Foo" AS "f"', [],
   'column alias',
 );
 
@@ -554,7 +554,7 @@ $join = $sqla->join(qw[Table1|t1       ab=cd         Table2|t2
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
   '"Table1" AS "t1" INNER JOIN      "Table2" AS "t2" ON ( "t1"."ab" = "t2"."cd" )
-                  INNER JOIN      "Table3"       ( ( ON "t2"."ef" > "Table3"."gh" 
+                  INNER JOIN      "Table3"       ON ( ( "t2"."ef" > "Table3"."gh" 
                                             AND "t2"."ij" < "Table3"."kl" ) )
                 LEFT OUTER JOIN "Table4"       ON ( "t1"."mn" = "Table4"."op" )',
   [],
@@ -602,7 +602,7 @@ $sqla = sqla(table_alias  => '%1$s %2$s',
 $join = $sqla->join(qw[Foo|f  =>{fk_A=pk_A,fk_B=pk_B} Bar]);
 is_same_sql_bind(
   $join->{sql}, $join->{bind},
-  'Foo "f" LEFT OUTER JOIN ("Bar") ON ( ( "f"."fk_A" = "Bar"."pk_A" AND "f"."fk_B" = "Bar"."pk_B" ) )', [],
+  '"Foo" "f" LEFT OUTER JOIN ("Bar") ON ( ( "f"."fk_A" = "Bar"."pk_A" AND "f"."fk_B" = "Bar"."pk_B" ) )', [],
 );
 
 
@@ -624,7 +624,7 @@ $sqla = sqla(sql_dialect => 'Oracle');
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT col1 "c1", col2 "c2" FROM Foo "f" INNER JOIN Bar "b" ON ( "f"."fk" = "b"."pk" )',
+  'SELECT "col1" "c1", "col2" "c2" FROM "Foo" "f" INNER JOIN "Bar" "b" ON ( "f"."fk" = "b"."pk" )',
   []
 );
 
@@ -636,7 +636,7 @@ is_same_sql_bind(
 
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT * FROM (SELECT subq_A.*, ROWNUM rownum__index FROM (SELECT * FROM Foo) subq_A WHERE ROWNUM <= ?) subq_B WHERE rownum__index >= ?',
+  'SELECT * FROM (SELECT subq_A.*, ROWNUM rownum__index FROM (SELECT * FROM "Foo") subq_A WHERE ROWNUM <= ?) subq_B WHERE rownum__index >= ?',
   [15, 6],
 );
 
@@ -863,7 +863,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO "Foo" ( "bar", "foo" ) VALUES (?, ?) RETURNING key',
+  'INSERT INTO "Foo" ( "bar", "foo" ) VALUES (?, ?) RETURNING "key"',
   [2, 1],
 );
 
@@ -874,7 +874,7 @@ is_same_sql_bind(
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'INSERT INTO "Foo" ( "bar", "foo" ) VALUES (?, ?) RETURNING k1, k2',
+  'INSERT INTO "Foo" ( "bar", "foo" ) VALUES (?, ?) RETURNING "k1", "k2"',
   [2, 1],
 );
 
@@ -930,7 +930,7 @@ SKIP: {
 );
 is_same_sql_bind(
   $sql, \@bind,
-  'UPDATE "Foo"  "bar" = ?, "foo" = ? WHERE ( "buz" = ? )',
+  'UPDATE "Foo" SET "bar" = ?, "foo" = ? WHERE ( "buz" = ? )',
   [2, 1, 3],
 );
 
@@ -1161,7 +1161,7 @@ is_same_sql_bind(
 
 is_same_sql_bind(
   $sql, \@bind,
-      'SELECT "a" AS "b" FROM Foo AS "Bar"',
+      'SELECT "a" AS "b" FROM "Foo" AS "Bar"',
   [],
 );
 
