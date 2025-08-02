@@ -26,10 +26,10 @@ my ($sql, @bind, $join);
 #----------------------------------------------------------------------
 
 # old API transmitted to parent
-($sql, @bind) = $sqla->select('Foo', 'bar', {bar => {'>' => 123}}, ['bar']);
+($sql, @bind) = $sqla->select('Foo', ['bar'], {bar => {'>' => 123}}, ['bar']);
 is_same_sql_bind(
   $sql, \@bind,
-  'SELECT "bar" FROM "Foo" WHERE ( "bar" > ? ORDER BY "bar" )', [123],
+  'SELECT "bar" FROM "Foo" WHERE ( "bar" > ? ) ORDER BY "bar"', [123],
   'old API (positional parameters)',
 );
 
